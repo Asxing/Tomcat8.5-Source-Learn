@@ -318,7 +318,7 @@ public class SecureNio2Channel extends Nio2Channel  {
                         }
                         return 1;
                     } else {
-                        throw new IOException(sm.getString("channel.nio.ssl.unexpectedStatusDuringUnwrap", handshakeStatus));
+                        throw new IOException(sm.getString("channel.nio.ssl.unexpectedStatusDuringUnwrap", handshake.getStatus()));
                     }
                     break;
                 }
@@ -891,6 +891,10 @@ public class SecureNio2Channel extends Nio2Channel  {
                                         getBufHandler().expand(
                                                 sslEngine.getSession().getApplicationBufferSize());
                                         dst2 = getBufHandler().getReadBuffer();
+                                    } else if (dst2 == getAppReadBufHandler().getByteBuffer()) {
+                                        getAppReadBufHandler()
+                                                .expand(sslEngine.getSession().getApplicationBufferSize());
+                                        dst2 = getAppReadBufHandler().getByteBuffer();
                                     } else {
                                         // Can't expand the buffer as there is no way to signal
                                         // to the caller that the buffer has been replaced.

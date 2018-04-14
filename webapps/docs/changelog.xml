@@ -44,7 +44,332 @@
   They eventually become mixed with the numbered issues. (I.e., numbered
   issues do not "pop up" wrt. others).
 -->
-<section name="Tomcat 8.5.27 (markt)">
+<section name="Tomcat 8.5.30 (markt)">
+  <subsection name="Catalina">
+    <changelog>
+      <fix>
+        <bug>51195</bug>: Avoid a false positive report of a web application
+        memory leak by clearing <code>ObjectStreamClass$Caches</code> of classes
+        loaded by the web application when the web application is stopped.
+        (markt)
+      </fix>
+      <fix>
+        <bug>52688</bug>: Add support for the <code>maxDays</code> attribute to
+        the <code>AccessLogValve</code> and <code>ExtendedAccessLogValve</code>.
+        This allows the maximum number of days for which rotated access logs
+        should be retained before deletion to be defined. (markt)
+      </fix>
+      <fix>
+        Ensure the MBean names for the <code>SSLHostConfig</code> and
+        <code>SSLHostConfigCertificate</code> are correctly formed when the
+        <code>Connector</code> is bound to a specific IP address. (markt)
+      </fix>
+      <fix>
+        <bug>62168</bug>: When using the <code>PersistentManager</code> honor a
+        value of <code>-1</code> for <code>minIdleSwap</code> and do not swap
+        out sessions to keep the number of active sessions under
+        <code>maxActive</code>. Patch provided by Holger Sunke. (markt)
+      </fix>
+      <fix>
+        <bug>62172</bug>: Improve Javadoc for
+        <code>org.apache.catalina.startup.Constants</code> and ensure that the
+        constants are correctly used. (markt)
+      </fix>
+      <fix>
+        <bug>62175</bug>: Avoid infinite recursion, when trying to validate
+        a session while loading it with <code>PersistentManager</code>.
+        (fschumacher)
+      </fix>
+      <fix>
+        Ensure that <code>NamingContextListener</code> instances are only
+        notified once of property changes on the associated naming resources.
+        (markt)
+      </fix>
+      <add>
+        Add LoadBalancerDrainingValve, a Valve designed to reduce the amount of
+        time required for a node to drain its authenticated users. (schultz)
+      </add>
+      <add>
+        <bug>62224</bug>: Disable the <code>forkJoinCommonPoolProtection</code>
+        of the <code>JreMemoryLeakPreventionListener</code> when running on Java
+        9 and above since the underlying JRE bug has been fixed. (markt)
+      </add>
+    </changelog>
+  </subsection>
+  <subsection name="Coyote">
+    <changelog>
+      <fix>
+        Avoid potential loop in APR/Native poller. (markt)
+      </fix>
+      <fix>
+        Ensure streams that are received but not processed are excluded from the
+        tracking of maximum ID of processed streams. (markt)
+      </fix>
+      <fix>
+        Refactor the check for a paused connector to consistently prevent new
+        streams from being created after the connector has been paused. (markt)
+      </fix>
+      <fix>
+        Improve debug logging for HTTP/2 pushed streams. (markt)
+      </fix>
+      <fix>
+        The OpenSSL engine SSL session will now ignore invalid accesses. (remm)
+      </fix>
+      <fix>
+        <bug>62177</bug>: Correct two protocol errors with HTTP/2
+        <code>PUSH_PROMISE</code> frames. Firstly, the HTTP/2 protocol only
+        permits pushes to be sent on peer initiated requests. Secondly, pushes
+        must be sent in order of increasing stream ID. These restriction were
+        not being enforced leading to protocol errors at the client. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Web applications">
+    <changelog>
+      <add>
+        Add document for <code>FragmentationInterceptor</code>. (kfujino)
+      </add>
+      <add>
+        Document how the roles for an authenticated user are determined when the
+        <code>CombinedRealm</code> is used. (markt)
+      </add>
+    </changelog>
+  </subsection>
+  <subsection name="Tribes">
+    <changelog>
+      <fix>
+        Add JMX support for <code>FragmentationInterceptor</code> in order to
+        prevent warning of startup. (kfujino)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="jdbc-pool">
+    <changelog>
+      <fix>
+        Ensure that <code>SQLWarning</code> has been cleared when connection
+        returns to the pool. (kfujino)
+      </fix>
+      <add>
+        Enable clearing of <code>SQLWarning</code> via JMX. (kfujino)
+      </add>
+      <fix>
+        Ensure that parameters have been cleared when
+        <code>PreparedStatement</code> and/or <code>CallableStatement</code> are
+        cached. (kfujino)
+      </fix>
+      <fix>
+        Enable PoolCleaner to be started even if <code>validationQuery</code>
+        is not set. (kfujino)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Other">
+    <changelog>
+      <fix>
+        <bug>62164</bug>: Switch the build script to use TLS for downloads from
+        SourceForge and Maven Central to avoid failures due to HTTP to HTTPS
+        redirects. (markt)
+      </fix>
+      <add>
+        Always report the OS's umask when launching the JVM. (schultz)
+      </add>
+    </changelog>
+  </subsection>
+</section>
+<section name="Tomcat 8.5.29 (markt)" rtext="2018-03-08">
+  <subsection name="Catalina">
+    <changelog>
+      <fix>
+        Minor optimization when calling class transformers. (rjung)
+      </fix>
+      <fix>
+        Prevent Tomcat from applying gzip compression to content that is already
+        compressed with brotli compression. Based on a patch provided by burka.
+        (markt)
+      </fix>
+      <fix>
+        <bug>62090</bug>: Null container names are not allowed. (remm)
+      </fix>
+      <fix>
+        <bug>62104</bug>: Fix programmatic login regression as the
+        NonLoginAuthenticator has to be set for it to work (if no login method
+        is specified). (remm)
+      </fix>
+      <fix>
+        <bug>62117</bug>: Improve error message in <code>catalina.sh</code> when
+        calling <code>kill -0 &lt;pid&gt;</code> fails. Based on a suggestion
+        from Mark Morschhaeuser. (markt)
+      </fix>
+      <fix>
+        <bug>62118</bug>: Correctly create a JNDI <code>ServiceRef</code> using
+        the specified interface rather than the concrete type. Based on a
+        suggestion by Ángel Álvarez Páscua. (markt)
+      </fix>
+      <fix>
+        Fix for <code>RequestDumperFilter</code> log attribute. Patch provided
+        by Kirill Romanov via Github. (violetagg)
+      </fix>
+      <fix>
+        <bug>62123</bug>: Avoid <code>ConcurrentModificationException</code>
+        when attempting to clean up application triggered RMI memory leaks on
+        web application stop. (markt)
+      </fix>
+      <fix>
+        Correct a regression in the fix for <bug>60276</bug> that meant that
+        compression was applied to all MIME types. Patch provided by Stefan
+        Knoblich. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Coyote">
+    <changelog>
+      <fix>
+        Add minor HPACK fixes, based on fixes by Stuart Douglas. (remm)
+      </fix>
+      <fix>
+        <bug>61751</bug>: Follow up fix so that OpenSSL engine returns
+        underflow when unwrapping if no bytes were produced and the input is
+        empty. (remm)
+      </fix>
+      <fix>
+        Minor OpenSSL engine cleanups. (remm)
+      </fix>
+      <fix>
+        NIO SSL handshake should throw an exception on overflow status, like
+        NIO2 SSL. (remm)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Web applications">
+    <changelog>
+      <add>
+        <bug>48672</bug>: Add documentation for the Host Manager web
+        application. Patch provided by Marek Czernek. (markt)
+      </add>
+      <add>
+        Work-around a known, non-specification compliant behaviour in some
+        versions of IE that can allow XSS when the Manager application generates
+        a plain text response. Based on a suggestion from Muthukumar Marikani.
+        (markt)
+      </add>
+    </changelog>
+  </subsection>
+  <subsection name="Other">
+    <changelog>
+      <update>
+        Update the build script so MD5 hashes are no longer generated for
+        releases as per the change in the ASF distribution policy. (markt)
+      </update>
+    </changelog>
+  </subsection>
+</section>
+<section name="Tomcat 8.5.28 (markt)" rtext="2018-02-11">
+  <subsection name="Catalina">
+    <changelog>
+      <fix>
+        Prevent a stack trace being written to standard out when running on Java
+        10 due to changes in the <code>LogManager</code> implementation. (markt)
+      </fix>
+      <fix>
+        <bug>62000</bug>: When a JNDI reference cannot be resolved, ensure that
+        the root cause exception is reported rather than swallowed. (markt)
+      </fix>
+      <fix>
+        <bug>62036</bug>: When caching an authenticated user Principal in the
+        session when the web application is configured with the
+        <code>NonLoginAuthenticator</code>, cache the internal Principal object
+        rather than the user facing Principal object as Tomcat requires the
+        internal object to correctly process later authorization checks. (markt)
+      </fix>
+      <fix>
+        Avoid duplicate load attempts if one has been made already. (remm)
+      </fix>
+      <fix>
+        Avoid NPE in ThreadLocalLeakPreventionListener if there is no Engine.
+        (remm)
+      </fix>
+      <fix>
+        <bug>62067</bug>: Correctly apply security constraints mapped to the
+        context root using a URL pattern of <code>&quot;&quot;</code>. (markt)
+      </fix>
+      <fix>
+        When using Tomcat embedded, only perform Authenticator configuration
+        once during web application start. (markt)
+      </fix>
+      <fix>
+        Process all <code>ServletSecurity</code> annotations at web application
+        start rather than at servlet load time to ensure constraints are applied
+        consistently. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Coyote">
+    <changelog>
+      <fix>
+        <bug>61751</bug>: Fix truncated request input streams when using NIO2
+        with TLS. (markt)
+      </fix>
+      <fix>
+        <bug>62023</bug>: Log error reporting multiple SSLHostConfig elements
+        when using the APR Connector instead of crashing Tomcat. (csutherl)
+      </fix>
+      <fix>
+        <bug>62032</bug>: Fix NullPointerException when certificateFile is not
+        defined on an SSLHostConfig and unify the behavior when a
+        certificateFile is defined but the file does not exist for both
+        JKS and PEM file types. (csutherl)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="WebSocket">
+    <changelog>
+      <fix>
+        <bug>62024</bug>: When closing a connection with an abnormal close,
+        close the socket immediately rather than waiting for a close message
+        from the client that may never arrive. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Webapps">
+    <changelog>
+      <fix>
+        <bug>62049</bug>: Fix missing class from manager 404 JSP error page.
+        (remm)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="jdbc-pool">
+    <changelog>
+      <add>
+        Enhance the JMX support for jdbc-pool in order to expose
+        <code>PooledConnection</code> and <code>JdbcInterceptors</code>.
+        (kfujino)
+      </add>
+      <add>
+        Add MBean for <code>PooledConnection</code>. (kfujino)
+      </add>
+      <add>
+        <bug>62011</bug>: Add MBean for <code>StatementCache</code>. (kfujino)
+      </add>
+      <add>
+        Expose the cache size for each connection via JMX in
+        <code>StatementCache</code>. (kfujino)
+      </add>
+      <add>
+        Add MBean for <code>ResetAbandonedTimer</code>. (kfujino)
+      </add>
+    </changelog>
+  </subsection>
+  <subsection name="Other">
+    <changelog>
+      <update>
+        Update the NSIS Installer used to build the Windows installer to version
+        3.03. (kkolinko)
+      </update>
+    </changelog>
+  </subsection>
+</section>
+<section name="Tomcat 8.5.27 (markt)" rtext="2018-01-22">
   <subsection name="Catalina">
     <changelog>
       <fix>
@@ -78,7 +403,7 @@
     <changelog>
       <fix>
         <bug>62006</bug>: Document the new <code>JvmOptions9</code> command line
-        parameter for <code>tomcat9.exe</code>. (markt)
+        parameter for <code>tomcat8.exe</code>. (markt)
       </fix>
     </changelog>
   </subsection>
@@ -230,7 +555,7 @@
   <subsection name="jdbc-pool">
     <changelog>
       <fix>
-        <bug>61312</bug>: Prevent <code>NullPointerException</code>n when using
+        <bug>61312</bug>: Prevent <code>NullPointerException</code> when using
         the statement cache of connection that has been closed. (kfujino)
       </fix>
     </changelog>

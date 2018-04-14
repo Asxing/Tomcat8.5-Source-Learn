@@ -114,100 +114,23 @@
 
     <attributes>
 
+      <attribute name="buffered" required="false">
+        <p>Flag to determine if logging will be buffered.
+           If set to <code>false</code>, then access logging will be written after each
+           request. Default value: <code>true</code>
+        </p>
+      </attribute>
+
       <attribute name="className" required="true">
         <p>Java class name of the implementation to use.  This MUST be set to
         <strong>org.apache.catalina.valves.AccessLogValve</strong> to use the
         default access log valve.</p>
       </attribute>
 
-      <attribute name="directory" required="false">
-        <p>Absolute or relative pathname of a directory in which log files
-        created by this valve will be placed.  If a relative path is
-        specified, it is interpreted as relative to $CATALINA_BASE.  If
-        no directory attribute is specified, the default value is "logs"
-        (relative to $CATALINA_BASE).</p>
-      </attribute>
-
-      <attribute name="prefix" required="false">
-        <p>The prefix added to the start of each log file's name.  If not
-        specified, the default value is "access_log".</p>
-      </attribute>
-
-      <attribute name="suffix" required="false">
-        <p>The suffix added to the end of each log file's name.  If not
-        specified, the default value is "" (a zero-length string),
-        meaning that no suffix will be added.</p>
-      </attribute>
-
-      <attribute name="fileDateFormat" required="false">
-        <p>Allows a customized timestamp in the access log file name.
-           The file is rotated whenever the formatted timestamp changes.
-           The default value is <code>.yyyy-MM-dd</code>.
-           If you wish to rotate every hour, then set this value
-           to <code>.yyyy-MM-dd.HH</code>.
-           The date format will always be localized
-           using the locale <code>en_US</code>.
+      <attribute name="condition" required="false">
+        <p>The same as <code>conditionUnless</code>. This attribute is
+           provided for backwards compatibility.
         </p>
-      </attribute>
-
-      <attribute name="rotatable" required="false">
-        <p>Flag to determine if log rotation should occur.
-           If set to <code>false</code>, then this file is never rotated and
-           <code>fileDateFormat</code> is ignored.
-           Default value: <code>true</code>
-        </p>
-      </attribute>
-
-      <attribute name="renameOnRotate" required="false">
-        <p>By default for a rotatable log the active access log file name
-           will contain the current timestamp in <code>fileDateFormat</code>.
-           During rotation the file is closed and a new file with the next
-           timestamp in the name is created and used. When setting
-           <code>renameOnRotate</code> to <code>true</code>, the timestamp
-           is no longer part of the active log file name. Only during rotation
-           the file is closed and then renamed to include the timestamp.
-           This is similar to the behavior of most log frameworks when
-           doing time based rotation.
-           Default value: <code>false</code>
-        </p>
-      </attribute>
-
-      <attribute name="pattern" required="false">
-        <p>A formatting layout identifying the various information fields
-        from the request and response to be logged, or the word
-        <code>common</code> or <code>combined</code> to select a
-        standard format.  See below for more information on configuring
-        this attribute.</p>
-      </attribute>
-
-      <attribute name="encoding" required="false">
-        <p>Character set used to write the log file. An empty string means
-        to use the system default character set. Default value: use the
-        system default character set.
-        </p>
-      </attribute>
-
-      <attribute name="locale" required="false">
-        <p>The locale used to format timestamps in the access log
-           lines. Any timestamps configured using an
-           explicit SimpleDateFormat pattern (<code>%{xxx}t</code>)
-           are formatted in this locale. By default the
-           default locale of the Java process is used. Switching the
-           locale after the AccessLogValve is initialized is not supported.
-           Any timestamps using the common log format
-           (<code>CLF</code>) are always formatted in the locale
-           <code>en_US</code>.
-        </p>
-      </attribute>
-
-      <attribute name="requestAttributesEnabled" required="false">
-        <p>Set to <code>true</code> to check for the existence of request
-        attributes (typically set by the RemoteIpValve and similar) that should
-        be used to override the values returned by the request for remote
-        address, remote host, server port and protocol. If the attributes are
-        not set, or this attribute is set to <code>false</code> then the values
-        from the request will be used. If not set, the default value of
-        <code>false</code> will be used.</p>
       </attribute>
 
       <attribute name="conditionIf" required="false">
@@ -232,17 +155,49 @@
         </p>
       </attribute>
 
-      <attribute name="condition" required="false">
-        <p>The same as <code>conditionUnless</code>. This attribute is
-           provided for backwards compatibility.
+      <attribute name="directory" required="false">
+        <p>Absolute or relative pathname of a directory in which log files
+        created by this valve will be placed.  If a relative path is
+        specified, it is interpreted as relative to $CATALINA_BASE.  If
+        no directory attribute is specified, the default value is "logs"
+        (relative to $CATALINA_BASE).</p>
+      </attribute>
+
+      <attribute name="encoding" required="false">
+        <p>Character set used to write the log file. An empty string means
+        to use the system default character set. Default value: use the
+        system default character set.
         </p>
       </attribute>
 
-      <attribute name="buffered" required="false">
-        <p>Flag to determine if logging will be buffered.
-           If set to <code>false</code>, then access logging will be written after each
-           request. Default value: <code>true</code>
+      <attribute name="fileDateFormat" required="false">
+        <p>Allows a customized timestamp in the access log file name.
+           The file is rotated whenever the formatted timestamp changes.
+           The default value is <code>.yyyy-MM-dd</code>.
+           If you wish to rotate every hour, then set this value
+           to <code>.yyyy-MM-dd.HH</code>.
+           The date format will always be localized
+           using the locale <code>en_US</code>.
         </p>
+      </attribute>
+
+      <attribute name="locale" required="false">
+        <p>The locale used to format timestamps in the access log
+           lines. Any timestamps configured using an
+           explicit SimpleDateFormat pattern (<code>%{xxx}t</code>)
+           are formatted in this locale. By default the
+           default locale of the Java process is used. Switching the
+           locale after the AccessLogValve is initialized is not supported.
+           Any timestamps using the common log format
+           (<code>CLF</code>) are always formatted in the locale
+           <code>en_US</code>.
+        </p>
+      </attribute>
+
+      <attribute name="maxDays" required="false">
+        <p>The maximum number of days rotated access logs will be retained for
+           before being deleted. If not specified, the default value of
+           <code>-1</code> will be used which means never delete old files.</p>
       </attribute>
 
       <attribute name="maxLogMessageBufferSize" required="false">
@@ -252,12 +207,63 @@
            set to larger than the typical access log message size.</p>
       </attribute>
 
+      <attribute name="pattern" required="false">
+        <p>A formatting layout identifying the various information fields
+        from the request and response to be logged, or the word
+        <code>common</code> or <code>combined</code> to select a
+        standard format.  See below for more information on configuring
+        this attribute.</p>
+      </attribute>
+
+      <attribute name="prefix" required="false">
+        <p>The prefix added to the start of each log file's name.  If not
+        specified, the default value is "access_log".</p>
+      </attribute>
+
+      <attribute name="renameOnRotate" required="false">
+        <p>By default for a rotatable log the active access log file name
+           will contain the current timestamp in <code>fileDateFormat</code>.
+           During rotation the file is closed and a new file with the next
+           timestamp in the name is created and used. When setting
+           <code>renameOnRotate</code> to <code>true</code>, the timestamp
+           is no longer part of the active log file name. Only during rotation
+           the file is closed and then renamed to include the timestamp.
+           This is similar to the behavior of most log frameworks when
+           doing time based rotation.
+           Default value: <code>false</code>
+        </p>
+      </attribute>
+
+      <attribute name="requestAttributesEnabled" required="false">
+        <p>Set to <code>true</code> to check for the existence of request
+        attributes (typically set by the RemoteIpValve and similar) that should
+        be used to override the values returned by the request for remote
+        address, remote host, server port and protocol. If the attributes are
+        not set, or this attribute is set to <code>false</code> then the values
+        from the request will be used. If not set, the default value of
+        <code>false</code> will be used.</p>
+      </attribute>
+
       <attribute name="resolveHosts" required="false">
         <p>This attribute is no longer supported. Use the connector
         attribute <code>enableLookups</code> instead.</p>
         <p>If you have <code>enableLookups</code> on the connector set to
         <code>true</code> and want to ignore it, use <b>%a</b> instead of
         <b>%h</b> in the value of <code>pattern</code>.</p>
+      </attribute>
+
+      <attribute name="rotatable" required="false">
+        <p>Flag to determine if log rotation should occur.
+           If set to <code>false</code>, then this file is never rotated and
+           <code>fileDateFormat</code> is ignored.
+           Default value: <code>true</code>
+        </p>
+      </attribute>
+
+      <attribute name="suffix" required="false">
+        <p>The suffix added to the end of each log file's name.  If not
+        specified, the default value is "" (a zero-length string),
+        meaning that no suffix will be added.</p>
       </attribute>
 
     </attributes>
@@ -707,6 +713,81 @@
 
 
 <section name="Proxies Support">
+  <subsection name="Load Balancer Draining Valve">
+    <subsection name="Introduction">
+      <p>
+        When using mod_jk or mod_proxy_ajp, the client's session id is used to
+        determine which back-end server will be used to serve the request. If the
+        target node is being "drained" (in mod_jk, this is the <i>DISABLED</i>
+        state; in mod_proxy_ajp, this is the <i>Drain (N)</i> state), requests
+        for expired sessions can actually cause the draining node to fail to
+        drain.
+      </p>
+      <p>
+        Unfortunately, AJP-based load-balancers cannot prove whether the
+        client-provided session id is valid or not and therefore will send any
+        requests for a session that appears to be targeted to that node to the
+        disabled (or "draining") node, causing the "draining" process to take
+        longer than necessary.
+      </p>
+      <p>
+        This Valve detects requests for invalid sessions, strips the session
+        information from the request, and redirects back to the same URL, where
+        the load-balancer should choose a different (active)  node to handle the
+        request. This will accelerate the "draining" process for the disabled
+        node(s).
+      </p>
+
+      <p>
+        The activation state of the node is sent by the load-balancer in the
+        request, so no state change on the node being disabled is necessary. Simply
+        configure this Valve in your valve pipeline and it will take action when
+        the activation state is set to "disabled".
+      </p>
+
+      <p>
+        You should take care to register this Valve earlier in the Valve pipeline
+        than any authentication Valves, because this Valve should be able to
+        redirect a request before any authentication Valve saves a request to a
+        protected resource. If this happens, a new session will be created and
+        the draining process will stall because a new, valid session will be
+        established.
+      </p>
+    </subsection><!-- / Introduction -->
+
+    <subsection name="Attributes">
+      <p>The <strong>Load Balancer Draining Valve</strong> supports the
+      following configuration attributes:</p>
+
+      <attributes>
+        <attribute name="className" required="true">
+          <p>Java class name of the implementation to use. This MUST be set to
+          <strong>org.apache.catalina.valves.LoadBalancerDrainingValve</strong>.
+          </p>
+        </attribute>
+
+        <attribute name="redirectStatusCode" required="false">
+          <p>Allows setting a custom redirect code to be used when the client
+          is redirected to be re-balanced by the load-balancer. The default is
+          307 TEMPORARY_REDIRECT.</p>
+        </attribute>
+
+        <attribute name="ignoreCookieName" required="false">
+          <p>When used with <code>ignoreCookieValue</code>, a client can present
+          this cookie (and accompanying value) that will cause this Valve to
+          do nothing. This will allow you to probe your <i>disabled</i> node
+          before re-enabling it to make sure that it is working as expected.</p>
+        </attribute>
+
+        <attribute name="ignoreCookieValue" required="false">
+          <p>When used with <code>ignoreCookieName</code>, a client can present
+          a cookie (and accompanying value) that will cause this Valve to
+          do nothing. This will allow you to probe your <i>disabled</i> node
+          before re-enabling it to make sure that it is working as expected.</p>
+        </attribute>
+      </attributes>
+    </subsection><!-- /Attributes -->
+  </subsection><!-- /Load Balancer Draining Valve -->
 
 <subsection name="Remote IP Valve">
 

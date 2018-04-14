@@ -629,12 +629,12 @@ public class AprEndpoint extends AbstractEndpoint<Long> implements SNICallBack {
     @Override
     protected void releaseSSLContext(SSLHostConfig sslHostConfig) {
         Long ctx = sslHostConfig.getOpenSslContext();
-        if (ctx != null) {
+        if (ctx != null && ctx.longValue() != 0L) {
             SSLContext.free(ctx.longValue());
             sslHostConfig.setOpenSslContext(null);
         }
         Long cctx = sslHostConfig.getOpenSslConfContext();
-        if (cctx != null) {
+        if (cctx != null && cctx.longValue() != 0L) {
             SSLConf.free(cctx.longValue());
             sslHostConfig.setOpenSslConfContext(null);
         }
@@ -1721,31 +1721,30 @@ public class AprEndpoint extends AbstractEndpoint<Long> implements SNICallBack {
                             timeouts.remove(info.socket);
                             AprSocketWrapper wrapper = connections.get(
                                     Long.valueOf(info.socket));
-                            if (wrapper == null) {
-                                continue;
-                            }
-                            if (info.read() || info.write()) {
-                                wrapper.pollerFlags = wrapper.pollerFlags |
-                                        (info.read() ? Poll.APR_POLLIN : 0) |
-                                        (info.write() ? Poll.APR_POLLOUT : 0);
-                                // A socket can only be added to the poller
-                                // once. Adding it twice will return an error
-                                // which will close the socket. Therefore make
-                                // sure the socket we are about to add isn't in
-                                // the poller.
-                                removeFromPoller(info.socket);
-                                if (!addToPoller(info.socket, wrapper.pollerFlags)) {
-                                    closeSocket(info.socket);
+                            if (wrapper != null) {
+                                if (info.read() || info.write()) {
+                                    wrapper.pollerFlags = wrapper.pollerFlags |
+                                            (info.read() ? Poll.APR_POLLIN : 0) |
+                                            (info.write() ? Poll.APR_POLLOUT : 0);
+                                    // A socket can only be added to the poller
+                                    // once. Adding it twice will return an error
+                                    // which will close the socket. Therefore make
+                                    // sure the socket we are about to add isn't in
+                                    // the poller.
+                                    removeFromPoller(info.socket);
+                                    if (!addToPoller(info.socket, wrapper.pollerFlags)) {
+                                        closeSocket(info.socket);
+                                    } else {
+                                        timeouts.add(info.socket,
+                                                System.currentTimeMillis() +
+                                                        info.timeout);
+                                    }
                                 } else {
-                                    timeouts.add(info.socket,
-                                            System.currentTimeMillis() +
-                                                    info.timeout);
+                                    // Should never happen.
+                                    closeSocket(info.socket);
+                                    getLog().warn(sm.getString(
+                                            "endpoint.apr.pollAddInvalid", info));
                                 }
-                            } else {
-                                // Should never happen.
-                                closeSocket(info.socket);
-                                getLog().warn(sm.getString(
-                                        "endpoint.apr.pollAddInvalid", info));
                             }
                             info = localAddList.get();
                         }

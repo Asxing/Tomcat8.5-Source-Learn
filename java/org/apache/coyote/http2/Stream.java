@@ -407,8 +407,7 @@ public class Stream extends AbstractStream implements HeaderEmitter {
 
     void writeHeaders() throws IOException {
         boolean endOfStream = streamOutputBuffer.hasNoBody();
-        // TODO: Is 1k the optimal value?
-        handler.writeHeaders(this, 0, coyoteResponse.getMimeHeaders(), endOfStream, 1024);
+        handler.writeHeaders(this, 0, coyoteResponse.getMimeHeaders(), endOfStream, Constants.DEFAULT_HEADERS_FRAME_SIZE);
     }
 
 
@@ -418,8 +417,7 @@ public class Stream extends AbstractStream implements HeaderEmitter {
 
 
     void writeAck() throws IOException {
-        // TODO: Is 64 too big? Just the status header with compression
-        handler.writeHeaders(this, 0, ACK_HEADERS, false, 64);
+        handler.writeHeaders(this, 0, ACK_HEADERS, false, Constants.DEFAULT_HEADERS_ACK_FRAME_SIZE);
     }
 
 
@@ -581,7 +579,8 @@ public class Stream extends AbstractStream implements HeaderEmitter {
 
 
     final void push(Request request) throws IOException {
-        if (!isPushSupported()) {
+        // Can only push when supported and from a peer initiated stream
+        if (!isPushSupported() || getIdentifier().intValue() % 2 == 0) {
             return;
         }
         // Set the special HTTP/2 headers

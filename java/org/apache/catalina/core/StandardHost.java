@@ -845,9 +845,8 @@ public class StandardHost extends ContainerBase implements Host {
     @Override
     protected synchronized void startInternal() throws LifecycleException {
 
-        // Set error report valve,发生异常时输出错误页面
+        // Set error report valve
         String errorValve = getErrorReportValveClass();
-        // 查看 pipleLine 是否有error report value
         if ((errorValve != null) && (!errorValve.equals(""))) {
             try {
                 boolean found = false;
@@ -859,10 +858,8 @@ public class StandardHost extends ContainerBase implements Host {
                     }
                 }
                 if(!found) {
-                    // 若没有找到，利用反射创建对象
                     Valve valve =
                         (Valve) Class.forName(errorValve).getConstructor().newInstance();
-                    // 把 valve 加到管道里
                     getPipeline().addValve(valve);
                 }
             } catch (Throwable t) {
@@ -872,7 +869,6 @@ public class StandardHost extends ContainerBase implements Host {
                         errorValve), t);
             }
         }
-        // 启动虚拟机，转到了 ContainerBase
         super.startInternal();
     }
 

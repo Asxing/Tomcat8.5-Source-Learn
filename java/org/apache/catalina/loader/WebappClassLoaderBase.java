@@ -370,6 +370,12 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
     private boolean clearReferencesHttpClientKeepAliveThread = true;
 
     /**
+     * Should Tomcat attempt to clear references to classes loaded by this class
+     * loader from the ObjectStreamClass caches?
+     */
+    private boolean clearReferencesObjectStreamClassCaches = true;
+
+    /**
      * Holds the class file transformers decorating this class loader. The
      * CopyOnWriteArrayList is thread safe. It is expensive on writes, but
      * those should be rare. It is very fast on reads, since synchronization
@@ -603,6 +609,17 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             boolean clearReferencesHttpClientKeepAliveThread) {
         this.clearReferencesHttpClientKeepAliveThread =
             clearReferencesHttpClientKeepAliveThread;
+    }
+
+
+    public boolean getClearReferencesObjectStreamClassCaches() {
+        return clearReferencesObjectStreamClassCaches;
+    }
+
+
+    public void setClearReferencesObjectStreamClassCaches(
+            boolean clearReferencesObjectStreamClassCaches) {
+        this.clearReferencesObjectStreamClassCaches = clearReferencesObjectStreamClassCaches;
     }
 
 
@@ -1533,6 +1550,11 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
         // Stop any threads the web application started
         clearReferencesThreads();
 
+        // Clear any references retained in the serialization caches
+        if (clearReferencesObjectStreamClassCaches) {
+            clearReferencesObjectStreamClassCaches();
+        }
+
         // Check for leaks triggered by ThreadLocals loaded by this class loader
         checkThreadLocalsForLeaks();
 
@@ -2084,16 +2106,18 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             stubField.setAccessible(true);
 
             // Clear the objTable map
-            Class<?> objectTableClass =
-                Class.forName("sun.rmi.transport.ObjectTable");
+            Class<?> objectTableClass = Class.forName("sun.rmi.transport.ObjectTable");
             Field objTableField = objectTableClass.getDeclaredField("objTable");
             objTableField.setAccessible(true);
             Object objTable = objTableField.get(null);
             if (objTable == null) {
                 return;
             }
+            Field tableLockField = objectTableClass.getDeclaredField("tableLock");
+            tableLockField.setAccessible(true);
+            Object tableLock = tableLockField.get(null);
 
-            synchronized (objTable) {
+            synchronized (tableLock) {
                 // Iterate over the values in the table
                 if (objTable instanceof Map<?,?>) {
                     Iterator<?> iter = ((Map<?,?>) objTable).values().iterator();
@@ -2145,6 +2169,36 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             } else {
                 // Re-throw all other exceptions
                 throw e;
+            }
+        }
+    }
+
+
+    private void clearReferencesObjectStreamClassCaches() {
+        try {
+            Class<?> clazz = Class.forName("java.io.ObjectStreamClass$Caches");
+            clearCache(clazz, "localDescs");
+            clearCache(clazz, "reflectors");
+        } catch (ReflectiveOperationException | SecurityException | ClassCastException e) {
+            log.warn(sm.getString(
+                    "webappClassLoader.clearObjectStreamClassCachesFail", getContextName()), e);
+        }
+    }
+
+
+    private void clearCache(Class<?> target, String mapName)
+            throws ReflectiveOperationException, SecurityException, ClassCastException {
+        Field f = target.getDeclaredField(mapName);
+        f.setAccessible(true);
+        Map<?,?> map = (Map<?,?>) f.get(null);
+        Iterator<?> keys = map.keySet().iterator();
+        while (keys.hasNext()) {
+            Object key = keys.next();
+            if (key instanceof Reference) {
+                Object clazz = ((Reference<?>) key).get();
+                if (loadedByThisOrChild(clazz)) {
+                    keys.remove();
+                }
             }
         }
     }
@@ -2218,9 +2272,10 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             if (transformers.size() > 0) {
                 // If the resource is a class just being loaded, decorate it
                 // with any attached transformers
-                String className = name.endsWith(CLASS_FILE_SUFFIX) ?
-                        name.substring(0, name.length() - CLASS_FILE_SUFFIX.length()) : name;
-                String internalName = className.replace(".", "/");
+
+                // Ignore leading '/' and trailing CLASS_FILE_SUFFIX
+                // Should be cheaper than replacing '.' by '/' in class name.
+                String internalName = path.substring(1, path.length() - CLASS_FILE_SUFFIX.length());
 
                 for (ClassFileTransformer transformer : this.transformers) {
                     try {

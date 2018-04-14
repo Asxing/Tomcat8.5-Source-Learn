@@ -503,7 +503,9 @@ public abstract class ContainerBase extends LifecycleMBeanBase
      */
     @Override
     public void setName(String name) {
-
+        if (name == null) {
+            throw new IllegalArgumentException(sm.getString("containerBase.nullName"));
+        }
         String oldName = this.name;
         this.name = name;
         support.firePropertyChange("name", oldName, this.name);
@@ -917,19 +919,16 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         // Start our subordinate components, if any
         logger = null;
         getLogger();
-        // 启动集群配置
         Cluster cluster = getClusterInternal();
         if (cluster instanceof Lifecycle) {
             ((Lifecycle) cluster).start();
         }
-        // 启动安全组件
         Realm realm = getRealmInternal();
         if (realm instanceof Lifecycle) {
             ((Lifecycle) realm).start();
         }
 
         // Start our child containers, if any
-        // catalina 构造server实例，server.xml 中如果存在host的自容器context，调用addchild方法
         Container children[] = findChildren();
         List<Future<Void>> results = new ArrayList<>();
         for (int i = 0; i < children.length; i++) {
@@ -952,7 +951,6 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start the Valves in our pipeline (including the basic), if any
-        //启动host所持有的Popeline组件
         if (pipeline instanceof Lifecycle)
             ((Lifecycle) pipeline).start();
 
@@ -960,7 +958,6 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         setState(LifecycleState.STARTING);
 
         // Start our thread
-        // 开始线程，启动后台线程
         threadStart();
 
     }

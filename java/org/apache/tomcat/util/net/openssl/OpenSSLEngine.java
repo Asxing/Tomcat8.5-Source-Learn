@@ -133,11 +133,8 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
     private long ssl;
     private long networkBIO;
 
-    /**
-     * 0 - not accepted, 1 - accepted implicitly via wrap()/unwrap(), 2 -
-     * accepted explicitly via beginHandshake() call
-     */
-    private int accepted;
+    private enum Accepted { NOT, IMPLICIT, EXPLICIT }
+    private Accepted accepted = Accepted.NOT;
     private boolean handshakeFinished;
     private int currentHandshake;
     private boolean receivedShutdown;
@@ -245,7 +242,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
      *
      * Calling this function with src.remaining == 0 is undefined.
      */
-    private int writePlaintextData(final ByteBuffer src) {
+    private static int writePlaintextData(final long ssl, final ByteBuffer src) {
         final int pos = src.position();
         final int limit = src.limit();
         final int len = Math.min(limit - pos, MAX_PLAINTEXT_LENGTH);
@@ -288,7 +285,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
     /**
      * Write encrypted data to the OpenSSL network BIO.
      */
-    private int writeEncryptedData(final ByteBuffer src) {
+    private static int writeEncryptedData(final long networkBIO, final ByteBuffer src) {
         final int pos = src.position();
         final int len = src.remaining();
         if (src.isDirect()) {
@@ -324,7 +321,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
     /**
      * Read plain text data from the OpenSSL internal BIO
      */
-    private int readPlaintextData(final ByteBuffer dst) {
+    private static int readPlaintextData(final long ssl, final ByteBuffer dst) {
         if (dst.isDirect()) {
             final int pos = dst.position();
             final long addr = Buffer.address(dst) + pos;
@@ -362,7 +359,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
     /**
      * Read encrypted data from the OpenSSL network BIO
      */
-    private int readEncryptedData(final ByteBuffer dst, final int pending) {
+    private static int readEncryptedData(final long networkBIO, final ByteBuffer dst, final int pending) {
         if (dst.isDirect() && dst.remaining() >= pending) {
             final int pos = dst.position();
             final long addr = Buffer.address(dst) + pos;
@@ -416,7 +413,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
         }
 
         // Prepare OpenSSL to work in server mode and receive handshake
-        if (accepted == 0) {
+        if (accepted == Accepted.NOT) {
             beginHandshakeImplicitly();
         }
 
@@ -442,7 +439,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
             // Write the pending data from the network BIO into the dst buffer
             try {
-                bytesProduced = readEncryptedData(dst, pendingNet);
+                bytesProduced = readEncryptedData(networkBIO, dst, pendingNet);
             } catch (Exception e) {
                 throw new SSLException(e);
             }
@@ -469,7 +466,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
                 // Write plain text application data to the SSL engine
                 try {
-                    bytesConsumed += writePlaintextData(src);
+                    bytesConsumed += writePlaintextData(ssl, src);
                 } catch (Exception e) {
                     throw new SSLException(e);
                 }
@@ -486,7 +483,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
                     // Write the pending data from the network BIO into the dst buffer
                     try {
-                        bytesProduced += readEncryptedData(dst, pendingNet);
+                        bytesProduced += readEncryptedData(networkBIO, dst, pendingNet);
                     } catch (Exception e) {
                         throw new SSLException(e);
                     }
@@ -528,7 +525,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
         }
 
         // Prepare OpenSSL to work in server mode and receive handshake
-        if (accepted == 0) {
+        if (accepted == Accepted.NOT) {
             beginHandshakeImplicitly();
         }
 
@@ -553,7 +550,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
         // Write encrypted data to network BIO
         int written = -1;
         try {
-            written = writeEncryptedData(src);
+            written = writeEncryptedData(networkBIO, src);
         } catch (Exception e) {
             throw new SSLException(e);
         }
@@ -591,7 +588,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
                 int bytesRead;
                 try {
-                    bytesRead = readPlaintextData(dst);
+                    bytesRead = readPlaintextData(ssl, dst);
                 } catch (Exception e) {
                     throw new SSLException(e);
                 }
@@ -621,8 +618,8 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
             closeOutbound();
             closeInbound();
         }
-        if (bytesProduced == 0 && written == 0) {
-            return new SSLEngineResult(SSLEngineResult.Status.BUFFER_UNDERFLOW, getHandshakeStatus(), 0, 0);
+        if (bytesProduced == 0 && (written == 0 || (written > 0 && !src.hasRemaining() && handshakeFinished))) {
+            return new SSLEngineResult(SSLEngineResult.Status.BUFFER_UNDERFLOW, getHandshakeStatus(), written, 0);
         } else {
             return new SSLEngineResult(getEngineStatus(), getHandshakeStatus(), written, bytesProduced);
         }
@@ -659,7 +656,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
         shutdown();
 
-        if (accepted != 0 && !receivedShutdown) {
+        if (accepted != Accepted.NOT && !receivedShutdown) {
             throw new SSLException(sm.getString("engine.inboundClose"));
         }
     }
@@ -678,7 +675,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
         isOutboundDone = true;
         engineClosed = true;
 
-        if (accepted != 0 && !destroyed) {
+        if (accepted != Accepted.NOT && !destroyed) {
             int mode = SSL.getShutdown(ssl);
             if ((mode & SSL.SSL_SENT_SHUTDOWN) != SSL.SSL_SENT_SHUTDOWN) {
                 SSL.shutdownSSL(ssl);
@@ -861,30 +858,28 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
             throw new SSLException(sm.getString("engine.engineClosed"));
         }
         switch (accepted) {
-            case 0:
-                handshake();
-                accepted = 2;
-                break;
-            case 1:
-                // A user did not start handshake by calling this method by him/herself,
-                // but handshake has been started already by wrap() or unwrap() implicitly.
-                // Because it's the user's first time to call this method, it is unfair to
-                // raise an exception.  From the user's standpoint, he or she never asked
-                // for renegotiation.
+        case NOT:
+            handshake();
+            accepted = Accepted.EXPLICIT;
+            break;
+        case IMPLICIT:
+            // A user did not start handshake by calling this method by him/herself,
+            // but handshake has been started already by wrap() or unwrap() implicitly.
+            // Because it's the user's first time to call this method, it is unfair to
+            // raise an exception.  From the user's standpoint, he or she never asked
+            // for renegotiation.
 
-                accepted = 2; // Next time this method is invoked by the user, we should raise an exception.
-                break;
-            case 2:
-                renegotiate();
-                break;
-            default:
-                throw new Error();
+            accepted = Accepted.EXPLICIT; // Next time this method is invoked by the user, we should raise an exception.
+            break;
+        case EXPLICIT:
+            renegotiate();
+            break;
         }
     }
 
     private void beginHandshakeImplicitly() throws SSLException {
         handshake();
-        accepted = 1;
+        accepted = Accepted.IMPLICIT;
     }
 
     private void handshake() throws SSLException {
@@ -947,7 +942,7 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
     @Override
     public synchronized SSLEngineResult.HandshakeStatus getHandshakeStatus() {
-        if (accepted == 0 || destroyed) {
+        if (accepted == Accepted.NOT || destroyed) {
             return SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING;
         }
 
@@ -1083,12 +1078,11 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
 
         @Override
         public byte[] getId() {
-            byte[] id;
+            byte[] id = null;
             synchronized (OpenSSLEngine.this) {
-                if (destroyed) {
-                    throw new IllegalStateException(sm.getString("engine.noSession"));
+                if (!destroyed) {
+                    id = SSL.getSessionId(ssl);
                 }
-                id = SSL.getSessionId(ssl);
             }
 
             return id;
@@ -1104,10 +1098,9 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
             // We need to multiply by 1000 as OpenSSL uses seconds and we need milliseconds.
             long creationTime = 0;
             synchronized (OpenSSLEngine.this) {
-                if (destroyed) {
-                    throw new IllegalStateException(sm.getString("engine.noSession"));
+                if (!destroyed) {
+                    creationTime = SSL.getTime(ssl);
                 }
-                creationTime = SSL.getTime(ssl);
             }
             return creationTime * 1000L;
         }
@@ -1321,10 +1314,9 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
             String applicationProtocol = OpenSSLEngine.this.applicationProtocol;
             if (applicationProtocol == null) {
                 synchronized (OpenSSLEngine.this) {
-                    if (destroyed) {
-                        throw new IllegalStateException(sm.getString("engine.noSession"));
+                    if (!destroyed) {
+                        applicationProtocol = SSL.getNextProtoNegotiated(ssl);
                     }
-                    applicationProtocol = SSL.getNextProtoNegotiated(ssl);
                 }
                 if (applicationProtocol == null) {
                     applicationProtocol = fallbackApplicationProtocol;
@@ -1335,12 +1327,11 @@ public final class OpenSSLEngine extends SSLEngine implements SSLUtil.ProtocolIn
                     OpenSSLEngine.this.applicationProtocol = applicationProtocol = "";
                 }
             }
-            String version;
+            String version = null;
             synchronized (OpenSSLEngine.this) {
-                if (destroyed) {
-                    throw new IllegalStateException(sm.getString("engine.noSession"));
+                if (!destroyed) {
+                    version = SSL.getVersion(ssl);
                 }
-                version = SSL.getVersion(ssl);
             }
             if (applicationProtocol.isEmpty()) {
                 return version;

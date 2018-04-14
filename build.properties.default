@@ -25,7 +25,7 @@
 # ----- Version Control Flags -----
 version.major=8
 version.minor=5
-version.build=27
+version.build=30
 version.patch=0
 version.suffix=
 
@@ -96,12 +96,12 @@ base-commons.loc.2=${base-apache.loc.2}/commons
 base-tomcat.loc.1=${base-apache.loc.1}/tomcat
 base-tomcat.loc.2=${base-apache.loc.2}/tomcat
 
-base-sf.loc=http://downloads.sourceforge.net
+base-sf.loc=https://downloads.sourceforge.net
 # repo.maven.apache.org is the same as repo2.maven.org
-base-maven.loc=http://repo.maven.apache.org/maven2
+base-maven.loc=https://repo.maven.apache.org/maven2
 
 # Mirror, was used when there were problems with the main SF downloads site
-# base-sf.loc=http://sunet.dl.sourceforge.net
+# base-sf.loc=https://sunet.dl.sourceforge.net
 
 # ----- Webservices - JAX RPC -----
 jaxrpc-lib.version=1.1-rc4
@@ -135,7 +135,7 @@ tomcat-native.win.1=${base-tomcat.loc.1}/tomcat-connectors/native/${tomcat-nativ
 tomcat-native.win.2=${base-tomcat.loc.2}/tomcat-connectors/native/${tomcat-native.version}/binaries/tomcat-native-${tomcat-native.version}-win32-bin.zip
 
 # ----- NSIS, version 3.0 or later -----
-nsis.version=3.02.1
+nsis.version=3.03
 nsis.home=${base.path}/nsis-${nsis.version}
 nsis.exe=${nsis.home}/makensis.exe
 nsis.arch.dir=x86-unicode/

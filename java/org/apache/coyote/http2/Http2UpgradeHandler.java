@@ -318,8 +318,6 @@ public class Http2UpgradeHandler extends AbstractStream implements InternalHttpU
         try {
             pingManager.sendPing(false);
 
-            checkPauseState();
-
             switch(status) {
             case OPEN_READ:
                 try {
@@ -529,9 +527,14 @@ public class Http2UpgradeHandler extends AbstractStream implements InternalHttpU
             boolean endOfStream, int payloadSize) throws IOException {
 
         if (log.isDebugEnabled()) {
-            log.debug(sm.getString("upgradeHandler.writeHeaders", connectionId,
-                    stream.getIdentifier(), Integer.valueOf(pushedStreamId),
-                    Boolean.valueOf(endOfStream)));
+            if (pushedStreamId == 0) {
+                log.debug(sm.getString("upgradeHandler.writeHeaders", connectionId,
+                        stream.getIdentifier()));
+            } else {
+                log.debug(sm.getString("upgradeHandler.writePushHeaders", connectionId,
+                        stream.getIdentifier(), Integer.valueOf(pushedStreamId),
+                        Boolean.valueOf(endOfStream)));
+            }
         }
 
         if (!stream.canWrite()) {
@@ -1101,11 +1104,16 @@ public class Http2UpgradeHandler extends AbstractStream implements InternalHttpU
 
 
     void push(Request request, Stream associatedStream) throws IOException {
-        Stream pushStream  = createLocalStream(request);
+        Stream pushStream;
 
-        // TODO: Is 1k the optimal value?
-        writeHeaders(associatedStream, pushStream.getIdentifier().intValue(),
-                request.getMimeHeaders(), false, 1024);
+        // Synchronized since PUSH_PROMISE frames have to be sent in order. Once
+        // the stream has been created we need to ensure that the PUSH_PROMISE
+        // is sent before the next stream is created for a PUSH_PROMISE.
+        synchronized (socketWrapper) {
+            pushStream = createLocalStream(request);
+            writeHeaders(associatedStream, pushStream.getIdentifier().intValue(),
+                    request.getMimeHeaders(), false, Constants.DEFAULT_HEADERS_FRAME_SIZE);
+        }
 
         pushStream.sentPushPromise();
 
@@ -1332,7 +1340,13 @@ public class Http2UpgradeHandler extends AbstractStream implements InternalHttpU
 
 
     @Override
-    public HeaderEmitter headersStart(int streamId, boolean headersEndStream) throws Http2Exception {
+    public HeaderEmitter headersStart(int streamId, boolean headersEndStream)
+            throws Http2Exception, IOException {
+
+        // Check the pause state before processing headers since the pause state
+        // determines if a new stream is created or if this stream is ignored.
+        checkPauseState();
+
         if (connectionState.get().isNewStreamAllowed()) {
             Stream stream = getStream(streamId, false);
             if (stream == null) {
@@ -1397,11 +1411,13 @@ public class Http2UpgradeHandler extends AbstractStream implements InternalHttpU
 
     @Override
     public void headersEnd(int streamId) throws ConnectionException {
-        setMaxProcessedStream(streamId);
         Stream stream = getStream(streamId, connectionState.get().isNewStreamAllowed());
-        if (stream != null && stream.isActive()) {
-            if (stream.receivedEndOfHeaders()) {
-                processStreamOnContainerThread(stream);
+        if (stream != null) {
+            setMaxProcessedStream(streamId);
+            if (stream.isActive()) {
+                if (stream.receivedEndOfHeaders()) {
+                    processStreamOnContainerThread(stream);
+                }
             }
         }
     }
