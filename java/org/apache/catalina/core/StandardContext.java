@@ -4757,6 +4757,7 @@ public class StandardContext extends ContainerBase
             return ok;
         }
 
+        // (1)
         ServletContextEvent event = new ServletContextEvent(getServletContext());
         ServletContextEvent tldEvent = null;
         if (noPluggabilityListeners.size() > 0) {
@@ -4771,6 +4772,7 @@ public class StandardContext extends ContainerBase
             try {
                 fireContainerEvent("beforeContextInitialized", listener);
                 if (noPluggabilityListeners.contains(listener)) {
+                    // (2)
                     listener.contextInitialized(tldEvent);
                 } else {
                     listener.contextInitialized(event);
@@ -5219,7 +5221,7 @@ public class StandardContext extends ContainerBase
                         JarScanner.class.getName(), getJarScanner());
             }
 
-            // Set up the context init params
+            // (1) Set up the context init params
             mergeParameters();
 
             // Call ServletContainerInitializers
@@ -5237,6 +5239,7 @@ public class StandardContext extends ContainerBase
 
             // Configure and call application event listeners
             if (ok) {
+                // (2) 监听启动加载
                 if (!listenerStart()) {
                     log.error(sm.getString("standardContext.listenerFail"));
                     ok = false;
@@ -5410,6 +5413,7 @@ public class StandardContext extends ContainerBase
 
         ServletContext sc = getServletContext();
         for (Map.Entry<String,String> entry : mergedParams.entrySet()) {
+            // (1)
             sc.setInitParameter(entry.getKey(), entry.getValue());
         }
 
