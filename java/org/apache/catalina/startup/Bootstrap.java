@@ -143,12 +143,15 @@ public final class Bootstrap {
 
     private void initClassLoaders() {
         try {
+            //(1) 创建 commonLoader
             commonLoader = createClassLoader("common", null);
             if( commonLoader == null ) {
                 // no config file, default to this loader - we might be in a 'single' env.
                 commonLoader=this.getClass().getClassLoader();
             }
+            //(2) 创建 catalinaLoader，父类加载器为 conmonLoader
             catalinaLoader = createClassLoader("server", commonLoader);
+            //(3) 创建 sharedLoader，父类加载器为 commonLoader
             sharedLoader = createClassLoader("shared", commonLoader);
         } catch (Throwable t) {
             handleThrowable(t);
@@ -161,10 +164,12 @@ public final class Bootstrap {
     private ClassLoader createClassLoader(String name, ClassLoader parent)
         throws Exception {
 
+        //(4) 获取catalina.propertties 中配置项分别为：common.loader、service.loader、shared.loader
         String value = CatalinaProperties.getProperty(name + ".loader");
         if ((value == null) || (value.equals("")))
             return parent;
 
+        //(5) 配置装饰类加载器所需的扫描路径
         value = replace(value);
 
         List<Repository> repositories = new ArrayList<>();
@@ -198,6 +203,7 @@ public final class Bootstrap {
             }
         }
 
+        //(6) 具体创建类加载器
         return ClassLoaderFactory.createClassLoader(repositories, parent);
     }
 
